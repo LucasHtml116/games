@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Snake Game Assets</title>
+    <style>
+        body { display: flex; flex-direction: column; align-items: center; background: #222; color: white; font-family: sans-serif; }
+        canvas { border: 5px solid #444; background-color: #000; }
+        .stats { margin-bottom: 10px; font-size: 20px; }
+        .controls { margin-top: 10px; }
+        button { padding: 10px 20px; cursor: pointer; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="stats">
+        Pontos: <span id="score">0</span> | Recorde: <span id="maxScore">0</span>
+    </div>
+    
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <div class="controls">
+        <button onclick="resetGame()">Reiniciar Jogo</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+        const maxScoreElement = document.getElementById("maxScore");
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        // Carregamento de Assets
+        const imgFloor = new Image(); imgFloor.src = 'tile_0.png';
+        const imgApple = new Image(); imgApple.src = 'tile_1.png';
+        const imgBody = new Image(); imgBody.src = 'tile_2.png';
+        const imgHead = new Image(); imgHead.src = 'tile_3.png';
+
+        let snake = [{x: 10, y: 10}];
+        let food = {x: 5, y: 5};
+        let dx = 1;
+        let dy = 0;
+        let score = 0;
+        let maxScore = 0;
+        let gameInterval;
+
+        function main() {
+            if (didGameEnd()) {
+                if (score > maxScore) maxScore = score;
+                maxScoreElement.innerText = maxScore;
+                alert("Game Over! Pontuação: " + score);
+                resetGame();
+                return;
+            }
+
+            setTimeout(function onTick() {
+                clearCanvas();
+                drawFood();
+                advanceSnake();
+                drawSnake();
+                main();
+            }, 100);
+        }
+
+        function clearCanvas() {
+            // Desenha o chão em todo o canvas
+            for (let i = 0; i < tileCount; i++) {
+                for (let j = 0; j < tileCount; j++) {
+                    ctx.drawImage(imgFloor, i * gridSize, j * gridSize, gridSize, gridSize);
+                }
+            }
+        }
+
+        function drawSnake() {
+            snake.forEach((part, index) => {
+                if (index === 0) {
+                    drawHead(part);
+                } else {
+                    ctx.drawImage(imgBody, part.x * gridSize, part.y * gridSize, gridSize, gridSize);
+                }
+            });
+        }
+
+        function drawHead(part) {
+            ctx.save();
+            ctx.translate(part.x * gridSize + gridSize / 2, part.y * gridSize + gridSize / 2);
+            
+            // Lógica de rotação baseada na direção dx, dy
+            let angle = 0;
+            if (dx === 1) angle = 0;             // Direita
+            else if (dx === -1) angle = Math.PI; // Esquerda
+            else if (dy === -1) angle = -Math.PI / 2; // Cima
+            else if (dy === 1) angle = Math.PI / 2;  // Baixo
+
+            ctx.rotate(angle);
+            
+            // Aplica a inversão solicitada: x uma vez (scaleX -1) e y duas vezes (que volta ao original)
+            // Como "y duas vezes" anula a inversão, aplicamos apenas no X.
+            ctx.scale(-1, 1); 
+
+            ctx.drawImage(imgHead, -gridSize / 2, -gridSize / 2, gridSize, gridSize);
+            ctx.restore();
+        }
+
+        function advanceSnake() {
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+            snake.unshift(head);
+            
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreElement.innerText = score;
+                createFood();
+            } else {
+                snake.pop();
+            }
+        }
+
+        function didGameEnd() {
+            for (let i = 4; i < snake.length; i++) {
+                if (snake[i].x === snake[0].x && snake[i].y === snake[0].y) return true;
+            }
+            const hitLeftWall = snake[0].x < 0;
+            const hitRightWall = snake[0].x > tileCount - 1;
+            const hitTopWall = snake[0].y < 0;
+            const hitBottomWall = snake[0].y > tileCount - 1;
+            return hitLeftWall || hitRightWall || hitTopWall || hitBottomWall;
+        }
+
+        function createFood() {
+            food.x = Math.floor(Math.random() * tileCount);
+            food.y = Math.floor(Math.random() * tileCount);
+        }
+
+        function drawFood() {
+            ctx.drawImage(imgApple, food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+        }
+
+        function changeDirection(event) {
+            const LEFT_KEY = 37; const RIGHT_KEY = 39; const UP_KEY = 38; const DOWN_KEY = 40;
+            const keyPressed = event.keyCode;
+            const goingUp = dy === -1; const goingDown = dy === 1;
+            const goingRight = dx === 1; const goingLeft = dx === -1;
+
+            if (keyPressed === LEFT_KEY && !goingRight) { dx = -1; dy = 0; }
+            if (keyPressed === UP_KEY && !goingDown) { dx = 0; dy = -1; }
+            if (keyPressed === RIGHT_KEY && !goingLeft) { dx = 1; dy = 0; }
+            if (keyPressed === DOWN_KEY && !goingUp) { dx = 0; dy = 1; }
+        }
+
+        function resetGame() {
+            snake = [{x: 10, y: 10}];
+            dx = 1; dy = 0;
+            score = 0;
+            scoreElement.innerText = score;
+            createFood();
+        }
+
+        document.addEventListener("keydown", changeDirection);
+        
+        // Inicia o jogo
+        createFood();
+        main();
+    </script>
+</body>
+</html>
